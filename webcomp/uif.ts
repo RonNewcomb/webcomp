@@ -44,17 +44,40 @@ async function getFile(tag: TagName, ext: FileExtension): Promise<FileContents |
     const resource = "./components/" + tag + "." + ext;
     switch (ext) {
         case "js":
-            const exported = await SystemJS.import(resource).catch(_ => undefined);
-            console.log("exported", exported);
-            if (!exported) return undefined;
-            if (exported.default) return exported.default;
-            const validIdentifer = tag.replace(/-|\./g, '');
-            if (exported[validIdentifer]) return exported[validIdentifer];
-            console.error(tag + ".js should have an exported controller class.  Either the class is missing, isn't exported as the default, or isn't exported as", validIdentifer);
-            return undefined;
+            return new Promise(resolve => {
+                const script = document.createElement('script') as HTMLScriptElement;
+                script.src = resource as string;
+                script.defer = true;
+                script.onload = ev => resolve(ev);
+                script.onerror = ev => resolve(undefined);
+                document.head.appendChild(script);
+            }).catch(_ => undefined).then(ev => console.log(tag + ".js", "loaded")).then(_ => resource);
+            //const exported = await SystemJS.import(resource).catch(_ => undefined);
+            //if (!exported) {
+            //    console.error(tag + ".js should export a class");
+            //    return undefined;
+            //}
+            //if (exported.default) return exported.default;
+            //const validIdentifer = tag.replace(/-|\./g, '');
+            //if (exported[validIdentifer]) return exported[validIdentifer];
+            //console.error(tag + ".js should have an exported controller class.  Either the class is missing, isn't exported as the default, or isn't exported as", validIdentifer);
+            //return undefined;
         case "css":
+            return new Promise(resolve => {
+                const link = document.createElement('link') as HTMLLinkElement;
+                link.href = resource as string;
+                link.rel = "stylesheet";
+                link.onload = ev => resolve(ev);
+                link.onerror = ev => resolve(undefined);
+                document.head.appendChild(link);
+            }).catch(_ => undefined).then(ev => console.log(tag + ".css", "loaded")).then(_ => resource);
         case "html":
-            return Promise.resolve(resource);
+            return new Promise<FileContents>(resolve => {
+                const xhr = new XMLHttpRequest();
+                xhr.open("GET", resource);
+                xhr.onload = () => resolve((xhr.status >= 200 && xhr.status < 300) ? xhr.response : "");
+                xhr.send();
+            });
         //case "css":
         //case "html":
         //    return new Promise<FileContents>(resolve => {
@@ -64,6 +87,7 @@ async function getFile(tag: TagName, ext: FileExtension): Promise<FileContents |
         //        xhr.send();
         //    });
     }
+    return undefined;
 }
 
 const browserToParseHTML = () => new Promise(r => setTimeout(r));
@@ -94,50 +118,23 @@ async function loadAndInstantiateComponent(tag: TagName, element: ElementWithCon
         definition.loading = Promise.all(loadingFiles);
     }
 
-    if (definition.loading)
-        await definition.loading;
+    await definition.loading;
 
     const componentInstance: ComponentInstance = {
         definition: definition,
         element: element,
     };
 
-    if (definition.css) {
-        // <link rel="stylesheet" href="fonts.css">
-        await new Promise(resolve => {
-            const link = document.createElement('link') as HTMLLinkElement;
-            link.href = definition!.css as string;
-            link.rel = "stylesheet";
-            link.onload = ev => resolve(ev);
-            document.head!.appendChild(link);
-        }).then(ev => console.log(tag + ".css", "loaded", ev));
-    }
+//    console.log(tag, definition);
 
     if (definition.html) {
-        // <link rel="import" href="/path/to/imports/stuff.html">
-        await new Promise(resolve => {
-            const link = document.createElement('link') as HTMLLinkElement;
-            link.href = definition!.html as string;
-            link.rel = "import";
-            link.onload = ev => resolve(ev);
-            document.body.appendChild(link);
-        }).then(ev => console.log(tag + ".html", "loaded:", ev));
-
-        //const oldContent = element.innerHTML;
-        //element.innerHTML = definition.html as string;
-
-        //if (oldContent) {
-        //    await browserToParseHTML();
-        //    const placeContentHeres = element.getElementsByTagName(surroundTag);
-        //    for (let i = placeContentHeres.length - 1; i >= 0; i--)
-        //        placeContentHeres[i].outerHTML = oldContent;
-        //}
-
+        const template = document.createElement('template') as HTMLTemplateElement;
+        template.innerHTML = definition.html as string;
+        template.id = tag as string;
+        document.body.appendChild(template);
         await browserToParseHTML();
-        componentInstance.children = await scanLoadAndInstantiate(element);
+        console.log(tag + ".html loaded");
     }
-
-    console.log(definition);
 
     if (definition.js) {
         try {
@@ -147,7 +144,7 @@ async function loadAndInstantiateComponent(tag: TagName, element: ElementWithCon
         catch (e) {
             console.error(tag, "controller ctor threw", e);
         }
-    }
+    } else console.log("no " + tag + ".js");
 
     return componentInstance;
 }

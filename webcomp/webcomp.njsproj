@@ -15,8 +15,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>9d070dd8-d0df-4964-9408-88723744cb79</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>
-    </StartupFile>
+    <StartupFile>.</StartupFile>
     <StartWebBrowser>True</StartWebBrowser>
     <SearchPath>
     </SearchPath>
