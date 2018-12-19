@@ -1,0 +1,18 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <script src="node_modules/systemjs/dist/system.js"></script>
+    <script src="uif.js" defer></script>
+</head>
+<body>
+    <h1>Web Components demo</h1>
+
+    <person-details>
+        <p slot="person-name"><edit-word>Morgan</edit-word> Stanley</p>
+        <span slot="person-age">36</span>
+        <span slot="person-occupation">Accountant</span>
+    </person-details>
+
+    <p>My name is <edit-word>Chris</edit-word>, the man said.</p>
+</body>
+</html>
